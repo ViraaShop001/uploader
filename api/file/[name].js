@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   const { name } = req.query;
 
   const r = await fetch(
-    `https://raw.githubusercontent.com/${USERNAME}/${REPO}/${BRANCH}/cdn/${name}`
+    `https://raw.githubusercontent.com/${USERNAME}/${REPO}/${BRANCH}/uploads/${name}`
   );
 
   if (!r.ok) return res.status(404).send("Not found");
