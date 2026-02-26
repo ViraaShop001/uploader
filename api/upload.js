@@ -1,68 +1,78 @@
-import crypto from "crypto"
-
-const USERNAME = "ViraaShop001"
-const REPO = "uploader"
-const TOKEN = "dm0SIK2U+I0f6Bx8h1b2DaE3IHyCarCN2H2lncDjmwrJTs/zeU30yklisRyV1PfJ"
-
-function randomName(ext){
-  return crypto.randomBytes(6).toString("hex") + ext
-}
-
 export const config = {
-  api: { bodyParser: false }
-}
+  api: {
+    bodyParser: false,
+  },
+};
 
-export default async function handler(req,res){
-  if(req.method !== "POST")
-    return res.status(405).end()
+import { Buffer } from "buffer";
 
-  try{
-    const chunks=[]
-    for await (const chunk of req){
-      chunks.push(chunk)
+const TOKEN = "dm0SIK2U+I0f6Bx8h1b2DaE3IHyCarCN2H2lncDjmwrJTs/zeU30yklisRyV1PfJ"; // isi token kamu
+const USERNAME = "ViraaShop001";
+const REPO = "uploader";
+const BRANCH = "main";
+
+export default async function handler(req, res) {
+  try {
+    if (req.method !== "POST")
+      return res.status(405).json({ error: "Method not allowed" });
+
+    // ambil raw body
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(chunk);
     }
-    const buffer = Buffer.concat(chunks)
+    const buffer = Buffer.concat(chunks);
 
-    const match = req.headers['content-type'].match(/boundary=(.*)$/)
-    const boundary = match[1]
+    // cari file dari multipart form
+    const text = buffer.toString();
+    const start = text.indexOf("\r\n\r\n") + 4;
+    const end = text.lastIndexOf("\r\n------");
+    const fileBuffer = buffer.slice(start, end);
 
-    const parts = buffer.toString().split(boundary)
-    const filePart = parts.find(p=>p.includes("filename="))
+    // ambil nama file
+    const filenameMatch = text.match(/filename="(.+?)"/);
+    if (!filenameMatch)
+      return res.status(400).json({ error: "Tidak ada file" });
 
-    const fileMatch = filePart.match(/filename="(.+?)"/)
-    const ext = "."+fileMatch[1].split('.').pop()
+    const originalName = filenameMatch[1];
+    const ext = originalName.split(".").pop();
 
-    const start = filePart.indexOf("\r\n\r\n")+4
-    const end = filePart.lastIndexOf("\r\n")
+    // nama random
+    const randomName =
+      Math.random().toString(36).substring(2, 10) + "." + ext;
 
-    const fileBuffer = Buffer.from(filePart.slice(start,end),"binary")
-    const base64 = fileBuffer.toString("base64")
+    // convert base64
+    const base64 = fileBuffer.toString("base64");
 
-    const filename = randomName(ext)
-
-    const gh = await fetch(
-      `https://api.github.com/repos/${USERNAME}/${REPO}/contents/uploads/${filename}`,
+    // upload ke github
+    const response = await fetch(
+      `https://api.github.com/repos/${USERNAME}/${REPO}/contents/cdn/${randomName}`,
       {
-        method:"PUT",
-        headers:{
-          Authorization:`Bearer ${TOKEN}`,
-          "Content-Type":"application/json"
+        method: "PUT",
+        headers: {
+          Authorization: `token ${TOKEN}`,
+          "Content-Type": "application/json",
         },
-        body:JSON.stringify({
-          message:"upload",
-          content:base64
-        })
+        body: JSON.stringify({
+          message: "upload file",
+          content: base64,
+          branch: BRANCH,
+        }),
       }
-    )
+    );
 
-    if(!gh.ok){
-      const t = await gh.text()
-      return res.status(500).json({status:false,error:t})
-    }
+    const data = await response.json();
 
-    res.json({status:true,url:`https://${req.headers.host}/${filename}`})
+    if (!response.ok)
+      return res.status(500).json({ error: data });
 
-  }catch(e){
-    res.status(500).json({status:false,error:String(e)})
+    const url = `https://${req.headers.host}/api/file/${randomName}`;
+
+    return res.json({
+      success: true,
+      url,
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.toString() });
   }
       }
