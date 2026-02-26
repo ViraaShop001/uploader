@@ -46,7 +46,7 @@ export default async function handler(req, res) {
 
     // upload ke github
     const response = await fetch(
-      `https://api.github.com/repos/${USERNAME}/${REPO}/contents/cdn/${randomName}`,
+      `https://api.github.com/repos/${USERNAME}/${REPO}/contents/uploads/${randomName}`,
       {
         method: "PUT",
         headers: {
