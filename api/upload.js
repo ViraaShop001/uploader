@@ -3,6 +3,9 @@ import crypto from "crypto"
 const USERNAME = "ViraaShop001"
 const REPO = "uploader"
 
+/* ⚠️ TOKEN HARDCODE (TIDAK AMAN) */
+const GITHUB_TOKEN = "dm0SIK2U+I0f6Bx8h1b2DaE3IHyCarCN2H2lncDjmwrJTs/zeU30yklisRyV1PfJ"
+
 function randomName(ext){
   return crypto.randomBytes(6).toString("hex") + ext
 }
@@ -22,7 +25,7 @@ export default async function handler(req,res){
       {
         method:"PUT",
         headers:{
-          Authorization:`Bearer ${process.env.GITHUB_TOKEN}`,
+          Authorization:`Bearer ${GITHUB_TOKEN}`,
           "Content-Type":"application/json"
         },
         body:JSON.stringify({
@@ -32,10 +35,15 @@ export default async function handler(req,res){
       }
     )
 
-    if(!gh.ok) throw await gh.text()
+    if(!gh.ok){
+      const err = await gh.text()
+      return res.status(500).json({status:false,error:err})
+    }
 
-    const url = `${process.env.BASE_URL}/${filename}`
-    res.json({status:true,url})
+    res.json({
+      status:true,
+      url:`https://${req.headers.host}/${filename}`
+    })
 
   }catch(e){
     res.status(500).json({status:false,error:String(e)})
